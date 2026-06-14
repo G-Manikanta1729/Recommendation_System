@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amazon Style Product Recommender</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+        }
+
+        .search-section {
+            text-align: center;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        input {
+            flex: 1;
+            max-width: 400px;
+            padding: 15px 20px;
+            font-size: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .share-btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+
+        .user-suggestions {
+            margin-top: 15px;
+            color: #666;
+        }
+
+        .user-suggestions span {
+            display: inline-block;
+            background: #f0f0f0;
+            padding: 5px 10px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .user-suggestions span:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .results {
+            margin-top: 30px;
+        }
+
+        .results h3 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .product-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        .product-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .product-id {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 10px;
+            font-family: monospace;
+        }
+
+        .confidence {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        /* Rating Stars */
+        .rating {
+            margin-top: 10px;
+            display: flex;
+            gap: 5px;
+        }
+        .star {
+            color: #ddd;
+            font-size: 18px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .star.active {
+            color: #ffc107;
+        }
+        .star:hover {
+            color: #ffc107;
+        }
+
+        /* Enhanced Loading Animation */
+        .loading-enhanced {
+            text-align: center;
+            padding: 60px;
+        }
+        .spinner-enhanced {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto;
+            position: relative;
+        }
+        .spinner-enhanced div {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            animation: spin-enhanced 1.2s linear infinite;
+        }
+        .spinner-enhanced div:nth-child(1) {
+            border: 4px solid #667eea;
+            border-top-color: transparent;
+        }
+        .spinner-enhanced div:nth-child(2) {
+            border: 4px solid #764ba2;
+            border-right-color: transparent;
+            animation-delay: -0.4s;
+        }
+        .spinner-enhanced div:nth-child(3) {
+            border: 4px solid #f093fb;
+            border-bottom-color: transparent;
+            animation-delay: -0.8s;
+        }
+        @keyframes spin-enhanced {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading-text {
+            margin-top: 20px;
+            color: #667eea;
+            font-weight: 500;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        /* Recently Viewed */
+        .recently-viewed-container {
+            overflow-x: auto;
+        }
+        .recently-viewed-grid {
+            display: flex;
+            gap: 15px;
+            padding: 10px 0;
+        }
+        .recently-viewed-item {
+            min-width: 180px;
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .recently-viewed-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        /* Keyboard shortcut hint */
+        .shortcut-hint {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 11px;
+            z-index: 999;
+        }
+        .shortcut-hint kbd {
+            background: #333;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+            margin: 0 2px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .product-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛍️ Product Recommendation Engine</h1>
+            <p>Get personalized product recommendations based on user behavior</p>
+        </div>
+
+        <div class="card">
+            <div class="search-section">
+                <div class="input-group">
+                    <input type="text" id="userId" placeholder="Enter User ID (e.g., A3SGKXW4Z2V1N)" value="A3SGKXW4Z2V1N">
+                    <button onclick="getRecommendations()">🔍 Get Recommendations</button>
+                    <button onclick="shareRecommendations()" class="share-btn">📤 Share</button>
+                </div>
+                <div class="user-suggestions">
+                    💡 Try these users: 
+                    <span onclick="setUser('A3SGKXW4Z2V1N')">A3SGKXW4Z2V1N</span>
+                    <span onclick="setUser('A1VNGQSRZ0P3S')">A1VNGQSRZ0P3S</span>
+                    <span onclick="setUser('A20RW6M6Z9H0W')">A20RW6M6Z9H0W</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="recentlyViewedContainer" class="card" style="display:none;">
+            <h3>👁️ Recently Viewed</h3>
+            <div id="recentlyViewed" class="recently-viewed-container"></div>
+        </div>
+
+        <div id="searchHistoryContainer"></div>
+
+        <div id="results" class="results"></div>
+    </div>
+
+    <!-- Product Details Modal -->
+    <div id="productModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; justify-content:center; align-items:center;">
+        <div style="background:white; border-radius:20px; padding:30px; max-width:500px; margin:20px; position:relative;">
+            <button onclick="closeModal()" style="position:absolute; top:10px; right:10px; background:red; color:white; border:none; border-radius:50%; width:30px; height:30px; cursor:pointer;">✕</button>
+            <h2 id="modalTitle" style="color:#333; margin-bottom:15px;"></h2>
+            <p id="modalId" style="color:#666; margin-bottom:10px;"></p>
+            <p id="modalConfidence" style="color:#667eea; margin-bottom:10px;"></p>
+            <div id="modalRating"></div>
+            <div style="background:#f0f0f0; border-radius:10px; padding:15px; margin-top:15px;">
+                <p style="margin:5px 0;">📊 <strong>Why recommended?</strong></p>
+                <p id="modalReason" style="color:#666; font-size:14px;"></p>
+            </div>
+            <button onclick="simulateAddToCart()" style="margin-top:20px; width:100%; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; padding:12px; border:none; border-radius:10px; cursor:pointer;">🛒 Add to Cart (Demo)</button>
+        </div>
+    </div>
+
+    <script>
+        // ============ EXISTING CODE (Preserved) ============
+        const API_URL = window.location.hostname === 'localhost' 
+            ? 'http://localhost:8000' 
+            : 'https://your-app-name.onrender.com';
+
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                if (data.status === 'healthy') {
+                    console.log('✅ API is healthy');
+                    await loadAvailableUsers();
+                    getRecommendations();
+                }
+            } catch (error) {
+                console.error('API not reachable:', error);
+                document.getElementById('results').innerHTML = `
+                    <div class="card">
+                        <div class="error">
+                            ⚠️ Cannot connect to the recommendation server.<br>
+                            Make sure the backend is running on port 8000
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        async function loadAvailableUsers() {
+            try {
+                const response = await fetch(`${API_URL}/users?limit=5`);
+                const data = await response.json();
+                
+                if (data.users && data.users.length > 0) {
+                    const suggestionsDiv = document.querySelector('.user-suggestions');
+                    if (suggestionsDiv) {
+                        let html = '💡 Try these users: ';
+                        data.users.forEach(user => {
+                            html += `<span onclick="setUser('${user}')">${user}</span>`;
+                        });
+                        suggestionsDiv.innerHTML = html;
+                    }
+                    document.getElementById('userId').value = data.users[0];
+                }
+            } catch (error) {
+                console.error('Could not load users:', error);
+            }
+        }
+
+        async function getRecommendations() {
+            const userId = document.getElementById('userId').value.trim();
+            
+            if (!userId) {
+                alert('Please enter a User ID');
+                return;
+            }
+            
+            // Add to search history
+            addToSearchHistory(userId);
+            
+            // Show enhanced loading
+            document.getElementById('results').innerHTML = `
+                <div class="card">
+                    <div class="loading-enhanced">
+                        <div class="spinner-enhanced">
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                        </div>
+                        <div class="loading-text">Finding recommendations for ${userId}...</div>
+                    </div>
+                </div>
+            `;
+            
+            try {
+                const response = await fetch(`${API_URL}/recommend/${encodeURIComponent(userId)}?limit=6`);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.detail || 'User not found');
+                }
+                
+                displayRecommendations(data);
+                
+            } catch (error) {
+                document.getElementById('results').innerHTML = `
+                    <div class="card">
+                        <div class="error">
+                            ❌ ${error.message}<br><br>
+                            <small>Try one of the suggested user IDs above.</small>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function displayRecommendations(data) {
+            const recommendations = data.recommendations;
+            
+            if (!recommendations || recommendations.length === 0) {
+                document.getElementById('results').innerHTML = `
+                    <div class="card">
+                        <div class="error">
+                            No recommendations found for this user.
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            const html = `
+                <div class="card">
+                    <h3>🎯 Personalized Recommendations for <span style="color: #667eea;">${data.user_id}</span></h3>
+                    <div class="product-grid">
+                        ${recommendations.map(rec => `
+                            <div class="product-card" onclick='showProductDetails(${JSON.stringify(rec).replace(/'/g, "&#39;")})'>
+                                <div class="product-name">${rec.product_name}</div>
+                                <div class="product-id">ID: ${rec.product_id}</div>
+                                <div class="confidence">Match Score: ${rec.confidence}%</div>
+                                <div class="rating" onclick="event.stopPropagation()">
+                                    ${createRatingStars(rec.product_id)}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="stats">
+                        <div class="stat">
+                            <div class="stat-value">${recommendations.length}</div>
+                            <div class="stat-label">Recommendations</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value">${Math.max(...recommendations.map(r => r.confidence)).toFixed(1)}%</div>
+                            <div class="stat-label">Top Match</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value">${(recommendations.reduce((a,b) => a + b.confidence, 0) / recommendations.length).toFixed(1)}%</div>
+                            <div class="stat-label">Average Match</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('results').innerHTML = html;
+            displaySearchHistory();
+        }
+
+        function setUser(userId) {
+            document.getElementById('userId').value = userId;
+            getRecommendations();
+        }
+
+        // ============ NEW FEATURE 1: Rating Stars ============
+        function createRatingStars(productId) {
+            let stars = '';
+            for(let i = 1; i <= 5; i++) {
+                stars += `<span class="star" onclick="rateProduct('${productId}', ${i})">★</span>`;
+            }
+            return stars;
+        }
+
+        function rateProduct(productId, rating) {
+            console.log(`Rated product ${productId} with ${rating} stars`);
+            showToast(`⭐ Rated ${rating} stars for product ${productId.substring(0,8)}...`);
+            // Save to localStorage
+            const ratings = JSON.parse(localStorage.getItem('productRatings') || '{}');
+            ratings[productId] = rating;
+            localStorage.setItem('productRatings', JSON.stringify(ratings));
+        }
+
+        // ============ NEW FEATURE 2: Recently Viewed ============
+        let recentlyViewed = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
+
+        function addToRecentlyViewed(product) {
+            if(!product) return;
+            recentlyViewed = recentlyViewed.filter(p => p.product_id !== product.product_id);
+            recentlyViewed.unshift(product);
+            recentlyViewed = recentlyViewed.slice(0, 5);
+            localStorage.setItem('recentlyViewed', JSON.stringify(recentlyViewed));
+            displayRecentlyViewed();
+        }
+
+        function displayRecentlyViewed() {
+            const container = document.getElementById('recentlyViewed');
+            const mainContainer = document.getElementById('recentlyViewedContainer');
+            
+            if(!container) return;
+            
+            if(recentlyViewed.length === 0) {
+                mainContainer.style.display = 'none';
+                return;
+            }
+            
+            mainContainer.style.display = 'block';
+            container.innerHTML = `
+                <div class="recently-viewed-grid">
+                    ${recentlyViewed.map(product => `
+                        <div class="recently-viewed-item" onclick='showProductDetails(${JSON.stringify(product).replace(/'/g, "&#39;")})'>
+                            <div style="font-weight:600; font-size:14px; margin-bottom:5px;">${product.product_name}</div>
+                            <div style="font-size:11px; color:#666;">${product.confidence}% match</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // ============ NEW FEATURE 3: Search History ============
+        let searchHistory = JSON.parse(localStorage.getItem('searchHistory') || '[]');
+
+        function addToSearchHistory(userId) {
+            if(!userId) return;
+            searchHistory = searchHistory.filter(id => id !== userId);
+            searchHistory.unshift(userId);
+            searchHistory = searchHistory.slice(0, 5);
+            localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
+        }
+
+        function displaySearchHistory() {
+            const container = document.getElementById('searchHistoryContainer');
+            if(!container) return;
+            
+            if(searchHistory.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+            
+            container.innerHTML = `
+                <div class="card" style="padding:15px;">
+                    <strong>🕒 Recent Searches:</strong><br>
+                    ${searchHistory.map(userId => `
+                        <span onclick="setUser('${userId}')" style="display:inline-block; background:#f0f0f0; padding:5px 10px; margin:5px; border-radius:5px; cursor:pointer; font-family:monospace; font-size:12px;">${userId}</span>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // ============ NEW FEATURE 4: Share Recommendations ============
+        async function shareRecommendations() {
+            const userId = document.getElementById('userId').value;
+            const productCards = document.querySelectorAll('.product-name');
+            
+            if(productCards.length === 0) {
+                showToast('No recommendations to share! Get recommendations first.');
+                return;
+            }
+            
+            let shareText = `🎯 My personalized recommendations from Product Recommender\nUser: ${userId}\n\n`;
+            productCards.forEach((card, i) => {
+                shareText += `${i+1}. ${card.innerText}\n`;
+            });
+            
+            if(navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'My Recommendations',
+                        text: shareText,
+                        url: window.location.href
+                    });
+                } catch(e) {
+                    console.log('Share cancelled');
+                }
+            } else {
+                navigator.clipboard.writeText(shareText);
+                showToast('📋 Recommendations copied to clipboard!');
+            }
+        }
+
+        // ============ NEW FEATURE 5: Modal Functions ============
+        let currentProduct = null;
+
+        function showProductDetails(product) {
+            currentProduct = product;
+            addToRecentlyViewed(product);
+            
+            document.getElementById('modalTitle').innerText = product.product_name;
+            document.getElementById('modalId').innerHTML = `<strong>Product ID:</strong> ${product.product_id}`;
+            document.getElementById('modalConfidence').innerHTML = `<strong>Match Score:</strong> ${product.confidence}%`;
+            document.getElementById('modalReason').innerHTML = `This product is recommended because users similar to you also showed interest in this item. ${product.confidence}% match confidence.`;
+            
+            // Add rating stars in modal
+            const savedRating = JSON.parse(localStorage.getItem('productRatings') || '{}')[product.product_id];
+            let ratingHtml = '<div style="margin-top:10px;"><strong>Your Rating:</strong><br>';
+            for(let i = 1; i <= 5; i++) {
+                const active = savedRating === i ? 'active' : '';
+                ratingHtml += `<span class="star ${active}" style="font-size:24px; cursor:pointer;" onclick="rateProduct('${product.product_id}', ${i}); document.getElementById('modalRating').innerHTML = this.outerHTML;">★</span>`;
+            }
+            ratingHtml += '</div>';
+            document.getElementById('modalRating').innerHTML = ratingHtml;
+            
+            document.getElementById('productModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('productModal').style.display = 'none';
+        }
+
+        function simulateAddToCart() {
+            if(currentProduct) {
+                alert(`✅ Added to cart: ${currentProduct.product_name}\n\nThis is a demo. In production, this would add the item to your shopping cart.`);
+                closeModal();
+                showToast(`🛒 Added "${currentProduct.product_name.substring(0,30)}..." to cart!`);
+            }
+        }
+
+        function showToast(message) {
+            let toast = document.createElement('div');
+            toast.innerHTML = message;
+            toast.style.position = 'fixed';
+            toast.style.bottom = '20px';
+            toast.style.right = '20px';
+            toast.style.backgroundColor = '#4CAF50';
+            toast.style.color = 'white';
+            toast.style.padding = '12px 20px';
+            toast.style.borderRadius = '10px';
+            toast.style.zIndex = '1001';
+            toast.style.animation = 'fadeInOut 2s';
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }
+
+        // ============ NEW FEATURE 6: Keyboard Shortcuts ============
+        document.addEventListener('keydown', function(e) {
+            // Press 'R' or 'r' to refresh recommendations
+            if(e.key === 'r' || e.key === 'R') {
+                e.preventDefault();
+                getRecommendations();
+                showToast('🔄 Refreshing recommendations...');
+            }
+            // Press '/' to focus search box
+            if(e.key === '/') {
+                e.preventDefault();
+                document.getElementById('userId').focus();
+                showToast('⌨️ Enter user ID and press Enter');
+            }
+            // Press 'Escape' to clear input
+            if(e.key === 'Escape') {
+                document.getElementById('userId').value = '';
+                showToast('⌨️ Input cleared');
+            }
+            // Press Enter to search
+            if(e.key === 'Enter' && document.activeElement.id === 'userId') {
+                getRecommendations();
+            }
+        });
+
+        // Add keyboard shortcut hint
+        const shortcutHint = document.createElement('div');
+        shortcutHint.className = 'shortcut-hint';
+        shortcutHint.innerHTML = '💡 <kbd>R</kbd> Refresh | <kbd>/</kbd> Search | <kbd>ESC</kbd> Clear';
+        document.body.appendChild(shortcutHint);
+
+        // Animation style for toast
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeInOut {
+                0% { opacity: 0; transform: translateY(20px); }
+                15% { opacity: 1; transform: translateY(0); }
+                85% { opacity: 1; transform: translateY(0); }
+                100% { opacity: 0; transform: translateY(-20px); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // ============ Initialize on Load ============
+        checkHealth();
+        displayRecentlyViewed();
+        displaySearchHistory();
+    </script>
+</body>
+</html>
