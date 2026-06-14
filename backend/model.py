@@ -5,6 +5,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import warnings
 import os
 import sys
+import requests
 
 warnings.filterwarnings('ignore')
 
@@ -39,36 +40,51 @@ class RecommendationEngine:
         print("📥 Dataset not found locally. Downloading from Hugging Face...")
         print("   (This may take 2-3 minutes for the first download)")
         
-        if not HUB_AVAILABLE:
-            print("❌ huggingface_hub not available. Please install it: pip install huggingface-hub")
-            return None
-        
+        # Method 1: Try direct download with requests (most reliable)
         try:
-            # Download from your Hugging Face dataset
-            dataset_path = hf_hub_download(
-                repo_id="GManikanta1729/amazon-reviews-recommendation",
-                filename="Reviews.csv",
-                resume=True,
-                etag_timeout=30
-            )
-            print(f"✅ Dataset downloaded successfully to: {dataset_path}")
+            direct_url = "https://huggingface.co/datasets/GManikanta1729/amazon-reviews-recommendation/resolve/main/Reviews.csv"
+            print("   Using direct download link...")
             
-            # Copy to current directory for easier access
-            import shutil
-            local_path = 'Reviews.csv'
-            if dataset_path != local_path and not os.path.exists(local_path):
-                shutil.copy2(dataset_path, local_path)
-                print(f"   Copied to: {local_path}")
-                return local_path
+            response = requests.get(direct_url, stream=True)
+            response.raise_for_status()
             
-            return dataset_path
+            total_size = int(response.headers.get('content-length', 0))
+            downloaded = 0
+            
+            with open('Reviews.csv', 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    if total_size > 0:
+                        percent = (downloaded / total_size) * 100
+                        print(f"\r   Progress: {percent:.1f}%", end='')
+            
+            print("\n✅ Dataset downloaded successfully!")
+            return 'Reviews.csv'
             
         except Exception as e:
-            print(f"❌ Download failed: {str(e)}")
-            print("\n📌 Manual download option:")
-            print("   Visit: https://huggingface.co/datasets/GManikanta1729/amazon-reviews-recommendation")
-            print("   Click 'Download' button and place Reviews.csv in the backend folder")
-            return None
+            print(f"   Direct download failed: {str(e)}")
+            
+            # Method 2: Try huggingface_hub if available (without resume parameter)
+            if HUB_AVAILABLE:
+                try:
+                    print("   Trying huggingface_hub library...")
+                    dataset_path = hf_hub_download(
+                        repo_id="GManikanta1729/amazon-reviews-recommendation",
+                        filename="Reviews.csv",
+                        local_dir="./",
+                        local_dir_use_symlinks=False
+                    )
+                    print(f"✅ Dataset downloaded successfully to: {dataset_path}")
+                    return dataset_path
+                except Exception as e2:
+                    print(f"   Hugging Face hub failed: {str(e2)}")
+        
+        print("\n❌ All download methods failed.")
+        print("\n📌 Manual download option:")
+        print("   Visit: https://huggingface.co/datasets/GManikanta1729/amazon-reviews-recommendation")
+        print("   Click 'Download' button and place Reviews.csv in the backend folder")
+        return None
         
     def load_and_train(self, csv_path=None):
         """Load dataset and train the recommendation model"""
